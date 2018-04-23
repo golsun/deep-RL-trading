@@ -1,4 +1,4 @@
-import random, os, datetime, gym, pickle, json, keras, sys
+import random, os, datetime, pickle, json, keras, sys
 import pandas as pd
 #import matplotlib.pyplot as plt
 import numpy as np

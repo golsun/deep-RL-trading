@@ -33,7 +33,7 @@ class Sampler:
 			prices, title = self.sample()
 			db.append((prices, '[%i]_'%i+title))
 		os.makedirs(fld)	# don't overwrite existing fld
-		pickle.dump(db, open(os.path.join(fld, 'db.pickle'),'w'))
+		pickle.dump(db, open(os.path.join(fld, 'db.pickle'),'wb'))
 		param = {'n_episodes':n_episodes}
 		for k in self.attrs:
 			param[k] = getattr(self, k)
@@ -259,7 +259,7 @@ def test_SinSampler():
 		plt.plot(sampler.sample(instruments)[0])
 		plt.show()
 		"""
-	fld = os.path.join('data','SinSamplerDB',game+'_A')
+	fld = os.path.join('data','SinSamplerDB',game+'_B')
 	sampler.build_db(n_episodes, fld)
 
 
@@ -275,11 +275,11 @@ def test_PairSampler():
 	sampler = PairSampler(game, window_episode=180, forecast_horizon_range=fhr, 
 		n_section=n_section, noise_level=noise_level, max_change_perc=max_change_perc, windows_transform=windows_transform)
 	
-	plt.plot(sampler.sample()[0]);plt.show()
-	"""
+	#plt.plot(sampler.sample()[0]);plt.show()
+	#"""
 	n_episodes = 100
 	fld = os.path.join('data','PairSamplerDB',
-		game+'_%i,%i'%(n_episodes, n_section)+str(fhr)+str(windows_transform)+'_A')
+		game+'_%i,%i'%(n_episodes, n_section)+str(fhr)+str(windows_transform)+'_B')
 	sampler.build_db(n_episodes, fld)
 	#"""
 
@@ -288,7 +288,7 @@ def test_PairSampler():
 
 if __name__ == '__main__':
 	#scan_match()
-	#test_SinSampler()
+	test_SinSampler()
 	#p = [1,2,3,2,1,2,3]
 	#print find_ideal(p)
 	test_PairSampler()

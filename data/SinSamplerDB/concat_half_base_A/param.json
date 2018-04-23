@@ -1,0 +1,1 @@
+{"n_episodes": 100, "title": "ConcatHalfSin+Base(0.5, (10, 40), (5, 80))", "window_episode": 180, "noise_amplitude_ratio": 0.5, "period_range": [10, 40], "amplitude_range": [5, 80], "can_half_period": true}

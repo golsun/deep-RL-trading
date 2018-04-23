@@ -1,0 +1,1 @@
+{"n_episodes": 100, "title": "randjump(5, (10, 30), 1, [])", "window_episode": 180, "forecast_horizon_range": [10, 30], "max_change_perc": 30.0, "noise_level": 5, "n_section": 1, "n_var": 2}

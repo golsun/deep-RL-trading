@@ -49,12 +49,12 @@ class Agent:
 			#'memory':self.memory
 			}
 
-		pickle.dump(attr, open(os.path.join(fld, 'agent_attr.pickle'),'w'))
+		pickle.dump(attr, open(os.path.join(fld, 'agent_attr.pickle'),'wb'))
 		self.model.save(fld)
 
 	def load(self, fld):
 		path = os.path.join(fld, 'agent_attr.pickle')
-		print path
+		print(path)
 		attr = pickle.load(open(path,'rb'))
 		for k in attr:
 			setattr(self, k, attr[k])
@@ -91,7 +91,7 @@ class QModelKeras:
 		attr = dict()
 		for a in self.attr2save:
 			attr[a] = getattr(self, a)
-		pickle.dump(attr, open(os.path.join(fld, 'Qmodel_attr.pickle'),'w'))
+		pickle.dump(attr, open(os.path.join(fld, 'Qmodel_attr.pickle'),'wb'))
 
 	def load(self, fld, learning_rate):
 		json_str = open(os.path.join(fld, 'model.json')).read()
@@ -99,7 +99,7 @@ class QModelKeras:
 		self.model.load_weights(os.path.join(fld, 'weights.hdf5'))
 		self.model.compile(loss='mse', optimizer=keras.optimizers.Adam(lr=learning_rate))
 
-		attr = pickle.load(open(os.path.join(fld, 'Qmodel_attr.pickle')))
+		attr = pickle.load(open(os.path.join(fld, 'Qmodel_attr.pickle'), 'rb'))
 		for a in attr:
 			setattr(self, a, attr[a])
 
@@ -223,9 +223,9 @@ class QModelConv(QModelKeras):
 		
 		self.model = model
 
-		self.model_name = self.qmodel + str(
+		self.model_name = self.qmodel + str([a for a in
 			zip(filter_num, filter_size, dilation, use_pool)
-			)+' + '+str(dense_units)
+			])+' + '+str(dense_units)
 
 		
 
@@ -283,69 +283,6 @@ class QModelConvGRU(QModelConvRNN):
 
 
 
-def test_QModelMLP():
-
-	state_shape = (12,2)
-	n_action = 2
-	n_epoch = 1000
-	
-	n_hidden = [30,10]
-
-	model = QModelMLP(state_shape, n_action)
-	print model.state_shape
-	model.build_model(n_hidden, 1e-3)
-	print type(model.model.summary())
-
-
-
-def test_QModelLSTM():
-	state_shape = (120,2)
-	n_action = 3
-	n_hidden = [4,8]
-	dense_units = [32]
-	learning_rate = 1e-5
-
-	print dir(QModelLSTM)
-
-	qmodel = QModelLSTM(state_shape, n_action)
-	qmodel.build_model(n_hidden, dense_units, learning_rate)
-
-
-
-
-def test_QModelConv():
-	state_shape = (40,2)
-	n_action = 2
-
-	filter_num = [4,4,8,8]
-	filter_size = [3] * len(filter_num)
-	use_pool = [False, False, False, True]
-	dilation = [1,2,4,8]
-	dense_units = [40,20]
-
-
-	qmodel = QModelConv(state_shape, n_action)
-	qmodel.build_model(filter_num, filter_size, dense_units, 1e-3, dilation=dilation, use_pool=use_pool)
-
-	model = qmodel.model
-
-	batch_size = 32
-
-	batch_states = np.random.random((batch_size,) + state_shape)
-	batch_q = np.random.random((batch_size,n_action))
-
-	t0 = datetime.datetime.now()
-	model.fit(batch_states, batch_q, epochs=1, verbose=0)
-	print datetime.datetime.now() - t0
-
-	state = np.random.random((1,) + state_shape)
-	q = np.random.random((1,n_action))
-	t0 = datetime.datetime.now()
-	for i in range(batch_size):
-		model.fit(state, q, epochs=1, verbose=0)
-	print datetime.datetime.now() - t0
-
-
 
 def load_model(fld, learning_rate):
 	s = open(os.path.join(fld,'QModel.txt'),'r').read().strip()
@@ -360,22 +297,4 @@ def load_model(fld, learning_rate):
 	qmodel.load(fld, learning_rate)
 	return qmodel
 
-
-def test_load_model():
-
-	sample = 'ConcatSin(0.5, (10, 40), (5, 80))'
-	model = 'Conv[4, 8, 16][3, 3, 3][24, 24] lr1e-05'
-	other = '(40, 180, 0.8, 0.99)'
-
-	fld = os.path.join('results', sample, model, other, 'model')
-	qmodel = load_model(fld)
-	qmodel.model.summary()
-
-
-
-if __name__ == '__main__':
-	test_QModelMLP()
-	#test_QModelConv()
-	#test_QModelLSTM()
-	#print np.nanargmax([0,np.nan,1])
 

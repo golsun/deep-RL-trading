@@ -108,7 +108,7 @@ def main():
 	agent.model = load_model(os.path.join(fld_save,'model'), learning_rate)
 
 	#print('='*20+'\nin-sample testing\n'+'='*20)
-	#simulator.test(n_episode_testing, save_per_episode=1, subfld='in-sample testing')
+	simulator.test(n_episode_testing, save_per_episode=1, subfld='in-sample testing')
 
 	"""
 	fld = os.path.join('data',db_type,db+'B')

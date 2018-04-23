@@ -103,9 +103,9 @@ def main():
 	print('='*20)
 
 	simulator = Simulator(agent, env, visualizer=visualizer, fld_save=fld_save)
-	#simulator.train(n_episode_training, save_per_episode=1, exploration_decay=exploration_decay, 
-	#	exploration_min=exploration_min, print_t=print_t, exploration_init=exploration_init)
-	agent.model = load_model(os.path.join(fld_save,'model'), learning_rate)
+	simulator.train(n_episode_training, save_per_episode=1, exploration_decay=exploration_decay, 
+		exploration_min=exploration_min, print_t=print_t, exploration_init=exploration_init)
+	#agent.model = load_model(os.path.join(fld_save,'model'), learning_rate)
 
 	#print('='*20+'\nin-sample testing\n'+'='*20)
 	simulator.test(n_episode_testing, save_per_episode=1, subfld='in-sample testing')

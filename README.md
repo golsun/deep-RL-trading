@@ -4,6 +4,7 @@
 This repo is the code for the paper [paper](https://arxiv.org/abs/1803.03916). I explored deep reinforcement learing as a method to find the optimal trading strategies via:
 * capturing the underlying dynamics (to be used in momentum trading)
 * utilizing the hidden relation among the inputs (to be used in arbitrage trading)
+
 Several neural networks are compared: 
 * Gated Recurrent Unit (GRU)
 * Long Short-Term Memory (LSTM)

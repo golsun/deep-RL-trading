@@ -1,7 +1,7 @@
 
 ## **Deep reinforcement learning for time series: playing idealized trading games**
 
-This repo is the code for the paper [paper](https://arxiv.org/abs/1803.03916). I explored deep reinforcement learing as a method to find the optimal trading strategies via:
+This repo is the code for the [paper](https://arxiv.org/abs/1803.03916). I explored deep reinforcement learing as a method to find the optimal trading strategies via:
 * capturing the underlying dynamics (to be used in momentum trading)
 * utilizing the hidden relation among the inputs (to be used in arbitrage trading)
 

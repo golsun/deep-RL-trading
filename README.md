@@ -1,19 +1,18 @@
 
 # **Playing trading games with deep reinforcement learning**
 
-This repo is the code for this [paper](https://arxiv.org/abs/1803.03916). I explored deep reinforcement learing as a method to find the optimal trading strategies via:
-* capturing the underlying dynamics (to be used in momentum trading)
-* utilizing the hidden relation among the inputs (to be used in arbitrage trading)
+This repo is the code for this [paper](https://arxiv.org/abs/1803.03916). Deep reinforcement learing is used to find optimal strategies in these two scenarios:
+* Momentum trading: capture the underlying dynamics
+* Arbitrage trading: utilize the hidden relation among the inputs
 
 Several neural networks are compared: 
-* Gated Recurrent Unit (GRU)
-* Long Short-Term Memory (LSTM)
+* Recurrent Neural Networks (GRU/LSTM)
 * Convolutional Neural Network (CNN)
 * Multi-Layer Perception (MLP)
 
 ### Dependencies
 
-You can get all dependencies via the [Anaconda](https://conda.io/docs/user-guide/tasks/manage-environments.html#creating-an-environment-from-an-environment-yml-file) environment file:
+You can get all dependencies via the [Anaconda](https://conda.io/docs/user-guide/tasks/manage-environments.html#creating-an-environment-from-an-environment-yml-file) environment file, [env.yml](https://github.com/golsun/deep-RL-time-series/blob/master/env.yml):
 
     conda env create -f env.yml
 

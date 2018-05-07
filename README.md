@@ -1,19 +1,18 @@
 
-This repo is the source code for:
+# **Playing trading games with deep reinforcement learning**
 
-### **Deep reinforcement learning for time series: playing idealized trading games**
+This repo is the code for this [paper](https://arxiv.org/abs/1803.03916). Deep reinforcement learing is used to find optimal strategies in these two scenarios:
+* Momentum trading: capture the underlying dynamics
+* Arbitrage trading: utilize the hidden relation among the inputs
 
-You can find the paper [here](https://arxiv.org/abs/1803.03916), and please reach me at gxiang1228@gmail.com for any questions/comments!
-
- In this paper I explored deep reinforcement learing as a method to find the optimal strategies for trading. I compared several neural networks: Stacked Gated Recurrent Unit (GRU), stacked Long Short-Term Memory (LSTM), stacked Convolutional Neural Network (CNN), and multi-layer perception (MLP). I designed two simple trading games aiming to test if the trained agent can: 
-* capture the underlying dynamics (to be used in momentum trading)
-* utilize the hidden relation among the inputs (to be used in arbitrage trading)
-
-It turns out that GRU performs best. However as these are just simplified worlds for the agent to play with, more further investigation is deserved.
+Several neural networks are compared: 
+* Recurrent Neural Networks (GRU/LSTM)
+* Convolutional Neural Network (CNN)
+* Multi-Layer Perception (MLP)
 
 ### Dependencies
 
-After you get my repo, you need packages like keras, tensorflow, keras, h5py. But don't worry about these dependencies, I've created a [Anaconda environment](https://conda.io/docs/user-guide/tasks/manage-environments.html#creating-an-environment-from-an-environment-yml-file) file, env.yml, for you to run my repo. Simply do this in your terminal:
+You can get all dependencies via the [Anaconda](https://conda.io/docs/user-guide/tasks/manage-environments.html#creating-an-environment-from-an-environment-yml-file) environment file, [env.yml](https://github.com/golsun/deep-RL-time-series/blob/master/env.yml):
 
     conda env create -f env.yml
 
@@ -22,4 +21,4 @@ Just call the main function
 
     python main.py
 
-But you can choose model (MLP, CNN, or GRU) and parameters by playing with the main function, and you can play with sampler.py to generate a different artifical input datasets to train and test.
+You can play with model parameters (specified in main.py), if you get good results or any trouble, please contact me at gxiang1228@gmail.com

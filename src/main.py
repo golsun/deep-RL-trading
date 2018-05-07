@@ -84,7 +84,7 @@ def main():
 	exploration_min = 0.01
 	window_state = 40
 
-	fld = os.path.join('data',db_type,db+'A')
+	fld = os.path.join('..','data',db_type,db+'A')
 	sampler = Sampler('load', fld=fld)
 	env = Market(sampler, window_state, open_cost)
 	model, print_t = get_model(model_type, env, learning_rate, fld_load)

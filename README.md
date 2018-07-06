@@ -1,4 +1,3 @@
-
 # **Playing trading games with deep reinforcement learning**
 
 This repo is the code for this [paper](https://arxiv.org/abs/1803.03916). Deep reinforcement learing is used to find optimal strategies in these two scenarios:
@@ -10,6 +9,10 @@ Several neural networks are compared:
 * Convolutional Neural Network (CNN)
 * Multi-Layer Perception (MLP)
 
+More about deep reinforcement learning (deep Q-learning): 
+
+* https://keon.io/deep-q-learning/ and its code on [GitHub](https://github.com/keon/deep-q-learning)
+* Google’s DeepMind published its famous paper [Playing Atari with Deep Reinforcement Learning](https://arxiv.org/abs/1312.5602)
 
 ### Setup and Dependencies
 

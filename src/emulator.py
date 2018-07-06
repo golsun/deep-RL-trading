@@ -4,9 +4,7 @@ from __future__ import division
 
 import os
 import numpy as np
-
-from lib import *
-
+from utils import mkdir_p
 
 def find_ideal(p, just_once):
     if not just_once:
@@ -36,8 +34,8 @@ class Market:
     def __init__(self, sampler, window_state, trading_cost, direction=1., risk_averse=0.):
         '''
         :param sampler:
-        :param window_state:
-        :param trading_cost:
+        :param window_state: each 'window' of full time series, like a 'frame' in a full game
+        :param trading_cost: commission + slipper cost for each buy/sell transaction
         :param direction:
         :param risk_averse:
         '''
@@ -83,6 +81,7 @@ class Market:
     def get_state(self, t=None):
         if t is None:
             t = self.t
+
         state = self.prices[t - self.window_state + 1: t + 1, :].copy()
         for i in range(self.sampler.n_var):
             norm = np.mean(state[:, i])
@@ -102,8 +101,11 @@ class Market:
             raise ValueError('no such action or action is not valid: action={}, valid_actions={}, no_position={}'.format(action, self.get_valid_actions(), self.no_position_flag))
 
         # TODO: check the 'self.direction'; currently it is 1.0
+        # 'self.direction' could be uself when short  sell allowed in emulations
         reward = self.direction * (self.price[self.t + 1] - self.price[self.t])
-        # TODO: need to double check risk_averse setting
+
+        # # TODO: need to double check risk_averse setting
+        # add add'l punishment on negative reward
         if reward < 0:
             reward *= (1. + self.risk_averse)
 

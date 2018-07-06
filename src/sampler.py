@@ -8,8 +8,8 @@ import json
 import pickle
 import random
 import numpy as np
-from lib import makedirs, PRICE_FLD
-
+import pandas as pd
+from utils import mkdir_p
 
 def read_data(date, instrument, time_step):
     path = os.path.join(PRICE_FLD, date, instrument + '.csv')
@@ -23,11 +23,20 @@ def read_data(date, instrument, time_step):
 
 
 class Sampler:
+    ''' Abstract class base     '''
+
+    def __init__(self):
+        self.db = None
+        self.i_db = 0
+        self.n_db = 0
+        self.sample = None
+        self.title = ''
+        self.attrs = None
 
     def load_db(self, fld):
 
         self.db = pickle.load(open(os.path.join(fld, 'db.pickle'), 'rb'))
-        param = json.load(open(os.path.join(fld, 'param.json'), 'rb'))
+        param = json.load(open(os.path.join(fld, 'param.json'), 'r'))
         self.i_db = 0
         self.n_db = param['n_episodes']
         self.sample = self.__sample_db
@@ -41,7 +50,7 @@ class Sampler:
         for i in range(n_episodes):
             prices, title = self.sample()
             db.append((prices, '[%i]_' % i + title))
-        os.makedirs(fld)  # don't overwrite existing fld
+        mkdir_p(fld)
         pickle.dump(db, open(os.path.join(fld, 'db.pickle'), 'wb'))
         param = {'n_episodes': n_episodes}
         for k in self.attrs:
@@ -57,10 +66,49 @@ class Sampler:
 
 
 class PairSampler(Sampler):
+    '''
 
-    def __init__(self, game,
-                 window_episode=None, forecast_horizon_range=None, max_change_perc=10., noise_level=10., n_section=1,
-                 fld=None, windows_transform=[]):
+    db
+
+        [ [ array, pair of numbers  , 'xxxxx'] ...... [, ] ]
+
+        (array([[121.98926437, 126.06777931],
+                [121.98926437, 124.27324391],
+                ....
+                [174.5068793 , 152.04988175],
+                [174.5068793 , 153.28762008],
+                [174.5068793 , 150.07018257],
+                [179.84604049, 151.78256152]]), '[50]_forecast_horizon=[16]')
+
+    param.json example
+
+         {'forecast_horizon_range': [10, 30],
+         'max_change_perc': 30.0,
+         'n_episodes': 100,
+         'n_section': 1,
+         'n_var': 2,
+         'noise_level': 5,
+         'title': 'randjump(5, (10, 30), 1, [])',
+         'window_episode': 180}
+
+    '''
+
+    def __init__(self, game, window_episode=None, forecast_horizon_range=None, max_change_perc=10.,
+                 noise_level=10., n_section=1, fld=None, windows_transform=[]):
+
+        '''
+
+        :param game:  ['load', 'randwalk', 'randjump']
+        :param window_episode:
+        :param forecast_horizon_range:
+        :param max_change_perc:
+        :param noise_level:
+        :param n_section:
+        :param fld: the folder with database file
+        :param windows_transform:
+        '''
+
+        super().__init__()
 
         self.window_episode = window_episode
         self.forecast_horizon_range = forecast_horizon_range
@@ -77,7 +125,7 @@ class PairSampler(Sampler):
         if game == 'load':
             self.load_db(fld)
         elif game in ['randwalk', 'randjump']:
-            self.__rand = getattr(self, '_PairSampler__' + game)
+            self.__rand = getattr(self, '_PairSampler__' + game)    # a pointer to __randwalk or __randjump function
             self.sample = self.__sample
             self.title = game + param_str
         else:
@@ -140,6 +188,7 @@ class SinSampler(Sampler):
                  window_episode=None, noise_amplitude_ratio=None, period_range=None, amplitude_range=None,
                  fld=None):
 
+        super().__init__()
         self.n_var = 1  # price only
 
         self.window_episode = window_episode
@@ -249,11 +298,7 @@ if __name__ == '__main__':
         sampler = SinSampler(game,
                              window_episode, noise_amplitude_ratio, period_range, amplitude_range)
         n_episodes = 100
-        """
-        for i in range(100):
-            plt.plot(sampler.sample(instruments)[0])
-            plt.show()
-            """
+
         fld = os.path.join('data', 'SinSamplerDB', game + '_B')
         sampler.build_db(n_episodes, fld)
 
@@ -270,8 +315,6 @@ if __name__ == '__main__':
                               n_section=n_section, noise_level=noise_level, max_change_perc=max_change_perc,
                               windows_transform=windows_transform)
 
-        # plt.plot(sampler.sample()[0]);plt.show()
-        # """
         n_episodes = 100
         fld = os.path.join('data', 'PairSamplerDB',
                            game + '_%i,%i' % (n_episodes, n_section) + str(fhr) + str(windows_transform) + '_B')
@@ -281,3 +324,15 @@ if __name__ == '__main__':
     test_SinSampler()
 
     test_PairSampler()
+
+    game = 'randwalk'
+    window_episode = 100
+    forecast_horizon_range = 40
+    max_change_perc = 5.
+    noise_level = 5.
+    n_section = 1
+    fld = None
+    windows_transform = []
+
+    psampler = PairSampler(game, window_episode, forecast_horizon_range,
+                           max_change_perc, noise_level, n_section)

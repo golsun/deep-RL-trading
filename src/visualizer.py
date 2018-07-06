@@ -2,11 +2,13 @@
 from __future__ import absolute_import
 from __future__ import division
 
-from lib import *
-import matplotlib.pyplot as plt
+import os
 import numpy as np
 import pandas as pd
-
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from utils import mkdir_p
 
 def get_tick_labels(bins, ticks):
     ticklabels = []

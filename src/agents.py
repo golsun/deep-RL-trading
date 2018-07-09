@@ -9,13 +9,12 @@ import keras
 import numpy as np
 from utils import mkdir_p
 
+from collections import deque
 
-class DQNAgent:
-    '''
-    refer to https://keon.io/deep-q-learning/ for a few design mindsets
-    '''
+class AgentBase(object):
 
-    def __init__(self, learning_rate=0.001, batch_size=32, discount_factor=0.96, epsilon=1.0, epsilon_min=0.001,
+
+    def __init__(self, learning_rate=0.001, batch_size=32, discount_factor=0.96, epsilon=1.0, epsilon_min=0.01,
                  epsilon_decay=0.995):
 
         self.model = None
@@ -45,6 +44,81 @@ class DQNAgent:
         print("epsilon_decay             :{}".format(self.epsilon_decay))
         print("enable_epsilon_decay      :{}".format(self.enable_epsilon_decay))
         print('\n')
+
+    def save_model(self, output_folder):
+        assert (os.path.exists(output_folder))
+        self.model.save(output_folder)
+
+    def build_model(self, model_type, state_shape, n_action, verbose=True):
+
+        learning_rate = self.learning_rate
+
+        if model_type == 'MLP':
+            m = 16
+            layers = 5
+            hidden_size = [m] * layers
+            model = QModelMLP(state_shape, n_action)
+            model.build_model(hidden_size, learning_rate=learning_rate, activation='tanh')
+
+        elif model_type == 'conv':
+            m = 16
+            layers = 2
+            filter_num = [m] * layers
+            filter_size = [3] * len(filter_num)
+            # use_pool = [False, True, False, True]
+            # use_pool = [False, False, True, False, False, True]
+            use_pool = None
+            # dilation = [1,2,4,8]
+            dilation = None
+            dense_units = [48, 24]
+            model = QModelConv(state_shape, n_action)
+            model.build_model(filter_num, filter_size, dense_units, learning_rate,
+                              dilation=dilation, use_pool=use_pool)
+
+        elif model_type == 'RNN':
+            m = 32
+            layers = 3
+            hidden_size = [m] * layers
+            dense_units = [m, m]
+            model = QModelGRU(state_shape, n_action)
+            model.build_model(hidden_size, dense_units, learning_rate=learning_rate)
+
+        elif model_type == 'LSTM':
+            m = 32
+            layers = 3
+            hidden_size = [m] * layers
+            dense_units = [m, m]
+            model = QModelLSTM(state_shape, n_action)
+            model.build_model(hidden_size, dense_units, learning_rate=learning_rate)
+
+        elif model_type == 'ConvRNN':
+            m = 8
+            conv_n_hidden = [m, m]
+            RNN_n_hidden = [m, m]
+            dense_units = [m, m]
+            model = QModelConvGRU(state_shape, n_action)
+            model.build_model(conv_n_hidden, RNN_n_hidden, dense_units, learning_rate=learning_rate)
+
+        else:
+            raise ValueError
+
+        self.model = model
+
+        if verbose:
+            model.model.summary()
+
+        return self.model
+
+class DQNAgent(AgentBase):
+    '''
+    refer to https://keon.io/deep-q-learning/ for a few design mindsets
+    '''
+
+    def __init__(self, learning_rate=0.001, batch_size=32, discount_factor=0.96, epsilon=1.0, epsilon_min=0.01,
+                 epsilon_decay=0.995):
+        super().__init__(learning_rate, batch_size, discount_factor,
+                         epsilon, epsilon_min, epsilon_decay)
+
 
     def remember(self, state, action, reward, next_state, done, next_valid_actions):
         ''' simply store states, actions and resulting rewards to the memory
@@ -119,70 +193,77 @@ class DQNAgent:
             setattr(self, k, attr[k])
         self.model.load(fld)
 
-    def build_model(self, model_type, env, verbose=True):
 
-        learning_rate = self.learning_rate
+class SimpleDQNAgent(AgentBase):
+    '''
+    refer to https://keon.io/deep-q-learning/ for a few design mindsets
+    '''
 
-        if model_type == 'MLP':
-            m = 16
-            layers = 5
-            hidden_size = [m] * layers
-            model = QModelMLP(env.state_shape, env.n_action)
-            model.build_model(hidden_size, learning_rate=learning_rate, activation='tanh')
+    def __init__(self, learning_rate=0.001, batch_size=32, discount_factor=0.96, epsilon=1.0, epsilon_min=0.01,
+                 epsilon_decay=0.995):
+        super().__init__(learning_rate, batch_size, discount_factor,
+                         epsilon, epsilon_min, epsilon_decay)
 
-        elif model_type == 'conv':
-            m = 16
-            layers = 2
-            filter_num = [m] * layers
-            filter_size = [3] * len(filter_num)
-            # use_pool = [False, True, False, True]
-            # use_pool = [False, False, True, False, False, True]
-            use_pool = None
-            # dilation = [1,2,4,8]
-            dilation = None
-            dense_units = [48, 24]
-            model = QModelConv(env.state_shape, env.n_action)
-            model.build_model(filter_num, filter_size, dense_units, learning_rate,
-                              dilation=dilation, use_pool=use_pool)
+    def remember(self, state, action, reward):
+        ''' simply store states, actions and resulting rewards to the memory
 
-        elif model_type == 'RNN':
-            m = 32
-            layers = 3
-            hidden_size = [m] * layers
-            dense_units = [m, m]
-            model = QModelGRU(env.state_shape, env.n_action)
-            model.build_model(hidden_size, dense_units, learning_rate=learning_rate)
+        :param state:
+        :param action:
+        :param reward:
+        :param next_state:
+        :param done: boolean flag indicates if the state is the final state.
+        :param next_valid_actions:
+        :return:
+        '''
+        self.memory.append([state, action, reward])
 
-        elif model_type == 'LSTM':
-            m = 32
-            layers = 3
-            hidden_size = [m] * layers
-            dense_units = [m, m]
-            model = QModelLSTM(env.state_shape, env.n_action)
-            model.build_model(hidden_size, dense_units, learning_rate=learning_rate)
+    def replay(self):
+        # Sample minibatch from the memory
+        sample_size = min(len(self.memory), self.batch_size)
+        batch = random.sample(self.memory, sample_size)
 
-        elif model_type == 'ConvRNN':
-            m = 8
-            conv_n_hidden = [m, m]
-            RNN_n_hidden = [m, m]
-            dense_units = [m, m]
-            model = QModelConvGRU(env.state_shape, env.n_action)
-            model.build_model(conv_n_hidden, RNN_n_hidden, dense_units, learning_rate=learning_rate)
+        batch = np.array(batch)
+        # print(batch)
+        np_state = np.concatenate(batch[:, 0])
+        np_state = np_state.reshape(-1, 40, 1)
+        # print('np_state shape: {}'.format(np_state.shape))
+        #print('shape: {}, type: '.format(batch[:, 1].shape, type(batch[:, 1])))
 
+        np_action = np.concatenate(batch[:, 1])
+        np_action = np_action.reshape((-1, 3))
+        # print('np_action: {}'.format(np_action))
+
+        # np_reward = np.array(batch[:, 2])
+        # np_reward = np_reward.reshape((-1, 1))
+        # print('np_reward: {}'.format(np_reward))
+
+        self.model.fit(np_state, np_action)
+
+    def act(self, state, valid_actions, is_training=True):
+
+        if np.random.random() <= self.epsilon and is_training:
+            # only in training mode
+            # randomly pick 1 action from valid actions, and return a value (not list)
+            return random.sample(valid_actions, 1)[0]
         else:
-            raise ValueError
+            # for both training and eval
+            # q_valid = self.get_q_valid(state, valid_actions)
 
-        self.model = model
+            # TODO: double check
 
-        if verbose:
-            model.model.summary()
+            act_values = self.model.predict(np.reshape(state, (1, 40, 1)))
+            idx = np.argmax(act_values)
 
-        return self.model
+            return valid_actions[idx]
 
+    def save(self, output_folder):
+        self.save_model(output_folder)
+
+    def save_model(self, output_folder):
+        self.model.save(output_folder)
 
 def add_dim(x, shape):
     return np.reshape(x, (1,) + shape)
-
 
 class QModelBase:
     # ref: https://keon.io/deep-q-learning/
@@ -192,6 +273,7 @@ class QModelBase:
         self.n_action = n_action
         self.attr2save = ['state_shape', 'n_action', 'model_name']
         self.qmodel = ''
+        self.mode = None
 
     def save(self, fld):
         mkdir_p(fld)
@@ -214,26 +296,35 @@ class QModelBase:
         for a in attr:
             setattr(self, a, attr[a])
 
+    # def predict(self, state):
+    #     q = self.model.predict(
+    #         add_dim(state, self.state_shape)
+    #     )[0]
+    #
+    #     if np.isnan(max(q)):
+    #         print('state' + str(state))
+    #         print('q' + str(q))
+    #         raise ValueError
+    #
+    #     return q
+    #
+    # def fit(self, state, action, q_action):
+    #     q = self.predict(state)
+    #     q[action] = q_action
+    #
+    #     self.model.fit(
+    #         add_dim(state, self.state_shape),
+    #         add_dim(q, (self.n_action,)),
+    #         epochs=1, verbose=0)
+
+
     def predict(self, state):
-        q = self.model.predict(
-            add_dim(state, self.state_shape)
-        )[0]
-
-        if np.isnan(max(q)):
-            print('state' + str(state))
-            print('q' + str(q))
-            raise ValueError
-
+        q = self.model.predict(state)
         return q
 
-    def fit(self, state, action, q_action):
-        q = self.predict(state)
-        q[action] = q_action
+    def fit(self, state, action):
+        self.model.fit(state, action, epochs=1, verbose=0)
 
-        self.model.fit(
-            add_dim(state, self.state_shape),
-            add_dim(q, (self.n_action,)),
-            epochs=1, verbose=0)
 
 
 class QModelMLP(QModelBase):
@@ -253,7 +344,7 @@ class QModelMLP(QModelBase):
             model.add(keras.layers.Dense(n_hidden[i], activation=activation))
         # model.add(keras.layers.Dropout(drop_rate))
 
-        model.add(keras.layers.Dense(self.n_action, activation='linear'))
+        model.add(keras.layers.Dense(self.n_action, activation='softmax'))
         model.compile(loss='mse', optimizer=keras.optimizers.Adam(lr=learning_rate))
         self.model = model
         self.model_name = self.qmodel + str(n_hidden)
@@ -269,17 +360,19 @@ class QModelRNN(QModelBase):
         super().__init__(state_shape, n_action)
         self.qmodel = 'RNN'
 
-    def _build_model(self, Layer, n_hidden, dense_units, learning_rate, activation='relu'):
+    def _build_model(self, rnn_layer, n_hidden, dense_units, learning_rate, activation='relu'):
 
         model = keras.models.Sequential()
         model.add(keras.layers.Reshape(self.state_shape, input_shape=self.state_shape))
         m = len(n_hidden)
         for i in range(m):
-            model.add(Layer(n_hidden[i],
-                            return_sequences=(i < m - 1)))
+            model.add(rnn_layer(n_hidden[i], return_sequences=(i < m - 1)))
+
         for i in range(len(dense_units)):
             model.add(keras.layers.Dense(dense_units[i], activation=activation))
-        model.add(keras.layers.Dense(self.n_action, activation='linear'))
+
+        #model.add(keras.layers.Dense(self.n_action, activation='linear'))
+        model.add(keras.layers.Dense(self.n_action, activation='softmax'))
         model.compile(loss='mse', optimizer=keras.optimizers.Adam(lr=learning_rate))
         self.model = model
         self.model_name = self.qmodel + str(n_hidden) + str(dense_units)
@@ -296,7 +389,9 @@ class QModelLSTM(QModelRNN):
 
 
 class QModelGRU(QModelRNN):
-    def init(self):
+
+    def __init__(self, state_shape, n_action):
+        super().__init__(state_shape, n_action)
         self.qmodel = 'GRU'
 
     def build_model(self, n_hidden, dense_units, learning_rate, activation='relu'):
@@ -333,7 +428,9 @@ class QModelConv(QModelBase):
         model.add(keras.layers.Flatten())
         for i in range(len(dense_units)):
             model.add(keras.layers.Dense(dense_units[i], activation=activation))
-        model.add(keras.layers.Dense(self.n_action, activation='linear'))
+
+        #model.add(keras.layers.Dense(self.n_action, activation='linear'))
+        model.add(keras.layers.Dense(self.n_action, activation='softmax'))
         model.compile(loss='mse', optimizer=keras.optimizers.Adam(lr=learning_rate))
 
         self.model = model
@@ -349,7 +446,7 @@ class QModelConvRNN(QModelBase):
     note param doesn't grow with len of sequence
     """
 
-    def _build_model(self, RNNLayer, conv_n_hidden, RNN_n_hidden, dense_units, learning_rate,
+    def _build_model(self, rnn_layer, conv_n_hidden, RNN_n_hidden, dense_units, learning_rate,
                      conv_kernel_size=3, use_pool=False, activation='relu'):
 
         model = keras.models.Sequential()
@@ -362,12 +459,13 @@ class QModelConvRNN(QModelBase):
                 model.add(keras.layers.MaxPooling1D(pool_size=2))
         m = len(RNN_n_hidden)
         for i in range(m):
-            model.add(RNNLayer(RNN_n_hidden[i],
-                               return_sequences=(i < m - 1)))
+            model.add(rnn_layer(RNN_n_hidden[i], return_sequences=(i < m - 1)))
+
         for i in range(len(dense_units)):
             model.add(keras.layers.Dense(dense_units[i], activation=activation))
 
-        model.add(keras.layers.Dense(self.n_action, activation='linear'))
+        #model.add(keras.layers.Dense(self.n_action, activation='linear'))
+        model.add(keras.layers.Dense(self.n_action, activation='softmax'))
         model.compile(loss='mse', optimizer=keras.optimizers.Adam(lr=learning_rate))
         self.model = model
         self.model_name = self.qmodel + str(conv_n_hidden) + str(RNN_n_hidden) + str(dense_units)
@@ -380,8 +478,8 @@ class QModelConvLSTM(QModelConvRNN):
 
     def build_model(self, conv_n_hidden, RNN_n_hidden, dense_units, learning_rate,
                     conv_kernel_size=3, use_pool=False, activation='relu'):
-        Layer = keras.layers.LSTM
-        self._build_model(Layer, conv_n_hidden, RNN_n_hidden, dense_units, learning_rate,
+
+        self._build_model(keras.layers.LSTM, conv_n_hidden, RNN_n_hidden, dense_units, learning_rate,
                           conv_kernel_size, use_pool, activation)
 
 
@@ -392,8 +490,7 @@ class QModelConvGRU(QModelConvRNN):
 
     def build_model(self, conv_n_hidden, RNN_n_hidden, dense_units, learning_rate,
                     conv_kernel_size=3, use_pool=False, activation='relu'):
-        Layer = keras.layers.GRU
-        self._build_model(Layer, conv_n_hidden, RNN_n_hidden, dense_units, learning_rate,
+        self._build_model(keras.layers.GRU, conv_n_hidden, RNN_n_hidden, dense_units, learning_rate,
                           conv_kernel_size, use_pool, activation)
 
 
@@ -416,3 +513,39 @@ def restore_model(fld, learning_rate):
     qmodel = qmodels[s](None, None)
     qmodel.load(fld, learning_rate)
     return qmodel
+
+
+if __name__ == '__main__':
+    import random
+    #
+    # unit test
+    #
+
+    # model param
+    batch_size = 32
+    learning_rate = 0.001
+    epsilon = 0.5
+
+    agent = SimpleDQNAgent(learning_rate=learning_rate, batch_size=batch_size, epsilon=epsilon)
+    agent.build_model("MLP", (40, 1), 3)
+
+    # Test build mode
+    for _model_keyword in ["MLP", "LSTM", "GRU"]:
+        try:
+            agent.build_model(_model_keyword, (40, 1), 3)
+        except Exception as e:
+            print(e)
+
+    for _ in range(5):
+        state = np.random.rand(40, 1)
+        print(state.shape)
+        action = random.sample([0.0, 0.5, 1.0], 1)[0]
+        action_np = np.where(np.array([0., 0.5, 1.0]) == action, 1, 0)
+        print('action_np: {}'.format(action_np))
+        reward = np.random.rand()
+        agent.remember(state, action_np, reward)
+
+    agent.replay()
+    state = np.random.rand(10, 40, 1)
+    res = agent.model.predict(state)
+    print('result:  type {}  value {}'.format(type(res), res))

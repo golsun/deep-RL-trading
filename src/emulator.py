@@ -122,5 +122,125 @@ class Market:
         return self.get_state(), reward, self.t == self.t_max, self.get_valid_actions()
 
 
+class MarketEmulator(object):
+
+    def __init__(self, dataset, trading_cost=0.0, direction=1., risk_averse=0.):
+        '''
+        :param sampler:
+        :param window_state: each 'window' of full time series, like a 'frame' in a full game
+        :param trading_cost: commission + slipper cost for each buy/sell transaction
+        :param direction:
+        :param risk_averse:
+        '''
+
+        self.dataset = dataset
+        self.lookback_period = dataset.lookback_period
+        self.reward_period = dataset.reward_period
+        self.n_var = dataset.n_var
+        # X's shape
+        self.state_shape = (self.lookback_period, self.n_var)
+
+        # hard coded for now
+        # value is leverage, or % of position in current portfolio
+        # leverage is the direct result of trading actions
+        self.action_universe = [0.0, 0.5, 1.0]
+        self.n_action = len(self.action_universe)
+        self.prices_one_frame = None
+
+        # reserve for future
+        self.trading_cost = trading_cost
+        self.direction = direction
+        self.risk_averse = risk_averse
+
+    def init_one_frame(self, prices, is_training=True):
+        self.prices_one_frame = prices
+        return self.get_state()
+
+    def calc_best_reward(self):
+        # find the reward window
+        prices_in_reward_period = self.prices_one_frame[-1 * self.reward_period:]
+
+        # Design Note
+        # must avoid any forward looking bias here
+        # use max price in reward period could introduce a bias
+        # probably just use the close price in reward period
+
+        # find the max and min value
+        allow_short_sell = True if min(self.action_universe) < 0 else False
+        if allow_short_sell:
+            raise NotImplementedError
+        else:
+            # all_possible_results = []
+            # for _action in self.action_universe:
+            #     all_possible_results += (
+            #                 _action * np.log(prices_in_reward_period / prices_in_reward_period[0])).tolist()
+            # best_reward = max(all_possible_results)
+            best_reward = max(np.array(self.action_universe) * np.log(prices_in_reward_period[-1] / prices_in_reward_period[0]))
+
+        return best_reward
+
+    def calc_reward(self, action):
+        ''' calculate the reward given the input action
+
+        :param action:
+        :return:
+        '''
+        # find the reward window
+        prices_in_reward_period = self.prices_one_frame[self.lookback_period:]
+
+        # TODO: not yet fact in the trading cost;
+        # we use log return
+        reward = action * np.log(prices_in_reward_period[-1] / prices_in_reward_period[0])
+
+        best_reward = self.calc_best_reward()
+        reward_adj = reward - float(best_reward)
+
+        return reward_adj
+
+    def get_state(self):
+        state = self.prices_one_frame[: self.lookback_period].copy()
+        state = np.log(state)
+
+        return state
+
+    def step(self, action):
+        state = self.get_state()
+        reward = self.calc_reward(action)
+        return state, reward
+
+    def iter_train_dataset(self):
+        for record in self.dataset.dataset_train:
+            yield record
+
+    def iter_val_dataset(self):
+        for record in self.dataset.dataset_val:
+            yield record
+
 if __name__ == '__main__':
-    pass
+    import random
+    from dataset import PriceDataSampler
+    #
+    # unit test
+    #
+    test_input_file = '../data/index/spy.csv'
+    sampler = PriceDataSampler()
+    sampler.load_price_data(test_input_file)
+    print(sampler.full_ts.head())
+    print(sampler.full_ts.describe())
+    sampler.split_data(500, split_ratio=0.2)
+    print('items in dataset_train: {}'.format(len(sampler.dataset_train)))
+    print('items in dataset_val: {}'.format(len(sampler.dataset_val)))
+
+
+    market = MarketEmulator(sampler)
+
+    for _prices in sampler.dataset_train[20: 30]:
+        action = random.sample(market.action_universe, 1)[0]
+
+        market.init_one_frame(_prices)
+
+        state, reward = market.run_one_frame(action)
+        best_reward = market.calc_best_reward()
+
+        print('reward (adj.) when action is {}: {}; best reward: {}'.format(action, reward, best_reward))
+        print('current state: {}'.format(state))

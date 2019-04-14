@@ -3,8 +3,8 @@
 from lib import *
 from sampler import *
 from agents import *
-from emulator import *
-from simulators import *
+from env import *
+from simulator import *
 from visualizer import *
 
 

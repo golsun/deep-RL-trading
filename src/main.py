@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 
 from lib import *
-from dataset import *
+from sampler import *
 from agents import *
 from env import *
 from simulator import *
